@@ -1,0 +1,310 @@
+---
+title: "STAT 512 Final Group Project Rmd"
+output: html_document
+author: "Team 6 - Section 3"
+---
+
+```{r}
+#Import Data
+bball = read.csv("nba.games.stats.csv", header = TRUE, sep =",")
+
+# colnames(bball)
+# IND = bball[bball$Team == "IND",]
+# dim(IND)
+# Filter to just take one team "IND"
+bball = bball[bball$Team == "IND",]
+
+# Subsetting data
+myvars = c("TeamPoints","X3PointShots.","FieldGoals.","Assists","TotalRebounds","Turnovers","TotalFouls","Steals")
+bball = bball[myvars]
+# colnames(bball)
+
+# Summary
+summary(bball)
+dim(bball)
+
+```
+
+
+# Preliminary Analysis
+```{r}
+# Assign Valriables
+Points = bball$TeamPoints
+Assists = bball$Assists
+ThreeP = bball$X3PointShots.
+Rebounds =   bball$TotalRebounds
+Turnovers= bball$Turnovers
+FieldGoals = bball$FieldGoals
+Fouls = bball$TotalFouls
+Steals = bball$Steals
+
+Project_data = data.frame(Points, Assists, ThreeP, Rebounds, Turnovers, FieldGoals, Fouls, Steals)
+summary(Project_data)
+
+par(mfrow=c(2,2))
+#Assists and Team points
+plot(Assists, Points, main = "Assists and Team Points", xlab ="Assists", ylab="Team Points")
+mod1 <-lm(Points ~ Assists)
+abline(mod1, col=3)
+hist(Assists, main = "Histogram of Assists", xlab = "Assists")
+
+#Rebounds and Team points
+plot(Rebounds, Points, main = "Rebounds and Team Points", xlab ="Rebounds", ylab="Team Points")
+mod2 <-lm(Points ~ Rebounds)
+abline(mod2, col=3)
+hist(Rebounds, main = "Histogram of Rebounds", xlab = "Rebounds")
+
+#3 Point Shot percentage and Team points
+plot(ThreeP, Points, main = "3 Point Shot Percentage and Team Points", xlab ="3 Point Shot Percentage", ylab="Team Points")
+mod3 <-lm(Points ~ ThreeP)
+abline(mod3, col=3)
+hist(ThreeP, main = "Histogram of 3 Point shot percentage", xlab = "3 Point shot percentage")
+
+#Turnovers and Team points
+plot(Turnovers, Points, main = "Turnovers and Team Points", xlab ="Turnovers", ylab="Team Points")
+mod4 <-lm(Points ~ Turnovers)
+abline(mod4, col=3)
+hist(Turnovers, main = "Histogram of Turnovers", xlab = "Turnovers")
+
+#Field Goals and Team points
+plot(FieldGoals, Points, main = "Field Goals and Team Points", xlab ="Field Goals", ylab="Team Points")
+mod5 <-lm(Points ~ FieldGoals)
+abline(mod5, col=3)
+hist(FieldGoals, main = "Histogram of Field Goals", xlab = "Field Goals")
+
+#Total Fouls and Team points
+plot(Fouls, Points, main = "Total Fouls and Team Points", xlab ="Total Fouls", ylab="Team Points")
+mod6 <-lm(Points ~ Fouls)
+abline(mod6, col=3)
+hist(Fouls, main = "Histogram of Fouls", xlab = "Total Fouls")
+
+#Steals and Team points
+plot(Steals, Points, main = "Steals and Team Points", xlab ="Steals", ylab="Team Points")
+mod6 <-lm(Points ~ Steals)
+abline(mod6, col=3)
+hist(Steals, main = "Histogram of Steals", xlab = "Steals")
+
+# Reset Plot Grid
+par(mfrow=c(1,1))
+
+# Boxplot and Scatterplot
+boxplot(bball, main='Box plots for each parameter')
+plot(bball,pch=3, main='Scatter Plots of variables')
+
+
+```
+
+# Model Selection
+```{r}
+# Initial Full Model
+bball.fullmod = lm(TeamPoints~X3PointShots.+FieldGoals.+Assists+TotalRebounds+Turnovers+TotalFouls+Steals, data = bball)
+summary(bball.fullmod)
+
+
+```
+
+# Anova on Initial Full Model
+```{r}
+library(car)
+anova(bball.fullmod)
+Anova(bball.fullmod, type="II")
+
+## After ANOVA's result show that we do not need to drop any variables
+```
+
+# Diagnostics On Intial Full Model
+```{r}
+# Residual Plots
+library(ALSM)
+residualPlots(bball.fullmod, main='Pearson Residual Plots')
+
+# QQ Norm for model residuals
+qqnorm(residuals(bball.fullmod), main="Noramal Q-Q Plot for Residuals of model")
+qqline(residuals(bball.fullmod), col='green')
+```
+
+# Brown Forsythe Test On Initial Full Model
+```{r}
+library(onewaytests)
+
+# BF-TESTS
+bball$residual = bball.fullmod$residuals
+
+bball$AssistsGroup = cut(bball$Assists,5)
+bf.test(residual~AssistsGroup, bball)
+
+bball$X3PointShots.Group = cut(bball$X3PointShots.,5)
+bf.test(residual~X3PointShots.Group, bball)
+
+bball$FieldGoals.Group = cut(bball$FieldGoals.,5)
+bf.test(residual~FieldGoals.Group, bball)
+
+bball$TotalFoulsGroup = cut(bball$TotalFouls,5)
+bf.test(residual~TotalFoulsGroup, bball)
+
+bball$TotalReboundsGroup = cut(bball$TotalRebounds,5)
+bf.test(residual~TotalReboundsGroup, bball)
+
+bball$TurnoversGroup = cut(bball$Turnovers,5)
+bf.test(residual~TurnoversGroup, bball)
+
+bball$StealsGroup = cut(bball$Steals,5)
+bf.test(residual~StealsGroup, bball)
+```
+
+# Shapiro on Initial Full Model
+```{r}
+shapiro.test(bball.fullmod$residual)
+
+### Since shapiro test p-value is smaller than 0.05, 
+### we reject the null, concluding that the data is NOT NORMAL.
+```
+
+
+# Transformations
+```{r}
+TeamPointsnew = log(bball$TeamPoints)
+bball$TeamPointsnew = log(bball$TeamPoints)
+bball.newmod = lm(TeamPointsnew~X3PointShots.+FieldGoals.+Assists+TotalRebounds+Turnovers+TotalFouls+Steals, data = bball)
+```
+
+# Diagnostics on new model
+```{r}
+library(ALSM)
+residualPlots(bball.newmod, main='Pearson Residual Plots on New Model')
+
+# QQ Norm for model residuals
+qqnorm(residuals(bball.newmod), main="Noramal Q-Q Plot for Residuals of model")
+qqline(residuals(bball.newmod), col='green')
+```
+
+# Shapiro on new model
+```{r}
+shapiro.test(residuals(bball.newmod))
+```
+
+# Brown-Forsythe Test on new model
+```{r}
+library(onewaytests)
+
+# BF-TESTS
+bball$residual = bball.newmod$residuals
+
+bball$AssistsGroup = cut(bball$Assists,5)
+bf.test(residual~AssistsGroup, bball)
+
+bball$X3PointShots.Group = cut(bball$X3PointShots.,5)
+bf.test(residual~X3PointShots.Group, bball)
+
+bball$FieldGoals.Group = cut(bball$FieldGoals.,5)
+bf.test(residual~FieldGoals.Group, bball)
+
+bball$TotalFoulsGroup = cut(bball$TotalFouls,5)
+bf.test(residual~TotalFoulsGroup, bball)
+
+bball$TotalReboundsGroup = cut(bball$TotalRebounds,5)
+bf.test(residual~TotalReboundsGroup, bball)
+
+bball$TurnoversGroup = cut(bball$Turnovers,5)
+bf.test(residual~TurnoversGroup, bball)
+
+bball$StealsGroup = cut(bball$Steals,5)
+bf.test(residual~StealsGroup, bball)
+```
+
+
+# Added Variable Plots
+```{r}
+avPlots(bball.newmod)
+```
+
+# VIF for New Model
+```{r}
+library(fmsb)
+VIF(bball.newmod)
+VIF(lm(TeamPointsnew~X3PointShots., data=bball))
+VIF(lm(TeamPointsnew~FieldGoals., data=bball))
+VIF(lm(TeamPointsnew~Assists, data=bball))
+VIF(lm(TeamPointsnew~TotalRebounds, data=bball))
+VIF(lm(TeamPointsnew~Turnovers, data=bball))
+VIF(lm(TeamPointsnew~TotalFouls, data=bball))
+VIF(lm(TeamPointsnew~Steals, data=bball))
+
+VIF(lm(TeamPointsnew~FieldGoals.+X3PointShots.+Assists+Turnovers+TotalFouls+TotalRebounds+Steals, data=bball))
+
+VIF(lm(TeamPointsnew~Assists+FieldGoals.+X3PointShots., data=bball))
+VIF(lm(TeamPointsnew~FieldGoals.+X3PointShots.+Assists, data=bball))
+VIF(lm(TeamPointsnew~X3PointShots.+Assists+FieldGoals., data=bball))
+VIF(lm(TeamPointsnew~X3PointShots.+FieldGoals.+Assists, data=bball))
+
+```
+
+
+# Outlier Tests
+```{r}
+# Visuzaliztion for Outliers
+# Studentized deleted residuals
+influencePlot(bball.newmod, main="Influence Plot")
+
+print('T value for studRes')
+qt(1-0.05/(2*328), 328-1-8)
+
+print('Bound for bound hati')
+# Hati (FOUND Point )
+hati = lm.influence(bball.newmod)$hat
+bound = 2*mean(hati)
+bound
+
+
+
+#Cook threshold
+print('Cooks threshold')
+qf(0.5,8,320)  #major
+```
+
+# Ridge Regression
+```{r}
+# install.packages("MASS")
+# install.packages("lmridge")
+
+# Ridge
+library(MASS)
+bball.ridgelm = lm.ridge(TeamPointsnew~X3PointShots.+FieldGoals.+Assists+TotalRebounds+Turnovers+TotalFouls+Steals, data = bball, lambda=seq(0,10,0.02))
+plot(bball.ridgelm, main="Ridge Trace Plot")
+select(bball.ridgelm)
+
+library(lmridge)
+bball.ridgemod2 = lmridge(TeamPointsnew~X3PointShots.+FieldGoals.+Assists+TotalRebounds+Turnovers+TotalFouls+Steals, data = bball, K=seq(0,1,0.02))
+plot(bball.ridgemod2)
+vif(bball.ridgemod2)
+```
+
+# Best Sub
+```{r}
+bs = BestSub(bball[,2:8],bball$TeamPointsnew, num=1)
+bs
+```
+
+# Cross Validation
+```{r}
+# Cross validaion
+library(leaps)
+library(caret)
+train.control<-trainControl(method="cv", number=5)
+step.model1<-train(TeamPointsnew~X3PointShots.+FieldGoals.+Assists+TotalRebounds+Turnovers+TotalFouls+Steals, data=bball, method="leapBackward",
+                   tuneGrid=data.frame(nvmax=7),
+                   trControl=train.control)
+
+step.model1$results
+```
+
+# ANOVA for New Model
+```{r}
+bball.newmod
+Anova(bball.newmod)
+anova(bball.newmod)
+
+# Summary new model
+summary(bball.newmod)
+```
+
